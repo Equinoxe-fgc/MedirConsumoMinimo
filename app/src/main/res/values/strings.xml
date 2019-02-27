@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MedirConsumoMinimo</string>
+    <string name="app_name">Medir Consumo Mínimo</string>
     <string name="gps">GPS</string>
     <string name="EnvioAservidor">Envío a servidor</string>
     <string name="start">Empezar</string>

@@ -1,21 +1,24 @@
 package com.equinoxe.medirconsumominimo;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -41,10 +44,14 @@ public class MainActivity extends AppCompatActivity {
     private CheckBox chkGPS;
     private CheckBox chkSendServer;
 
+    float fBrilloAnterior;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         btnStart = findViewById(R.id.btnStart);
         chkGPS = findViewById(R.id.chkGPS);
@@ -52,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
 
         df = new DecimalFormat("###.##");
         sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+
+        checkForPermissions();
 
         final TimerTask timerTaskComprobarBateria = new TimerTask() {
             public void run() {
@@ -69,6 +78,13 @@ public class MainActivity extends AppCompatActivity {
         if (bStarted) {
             btnStart.setText(R.string.start);
 
+            Window window = getWindow();
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+            WindowManager.LayoutParams layoutParams = window.getAttributes();
+            layoutParams.screenBrightness = fBrilloAnterior / 255f;
+            window.setAttributes(layoutParams);
+
             try {
                 fOut.close();
             } catch (Exception e) {
@@ -80,13 +96,29 @@ public class MainActivity extends AppCompatActivity {
             bLocation = chkGPS.isChecked();
             bSendServer = chkSendServer.isChecked();
 
+            String sMensaje = "Enciende: ";
+            if (bLocation)
+                sMensaje += "GPS ";
+            if (bSendServer)
+                sMensaje += "Wifi";
+
+            if (bLocation || bSendServer)
+                Toast.makeText(this, sMensaje, Toast.LENGTH_LONG).show();
+
+
+            Window window = getWindow();
+            WindowManager.LayoutParams layoutParams = window.getAttributes();
+            fBrilloAnterior = layoutParams.screenBrightness;
+            if (bSendServer) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+                layoutParams.screenBrightness = 1f / 255f;
+                window.setAttributes(layoutParams);
+            }
+
             String sFichero = Environment.getExternalStorageDirectory() + "/" + android.os.Build.MODEL + "_Descarga.txt";
             String currentDateandTime = sdf.format(new Date());
             try {
-                FileInputStream fIn = new FileInputStream(sFichero);
-                InputStreamReader sReader = new InputStreamReader(fIn);
-                BufferedReader buffreader = new BufferedReader(sReader);
-
                 fOut = new FileOutputStream(sFichero, false);
                 String sCadena = android.os.Build.MODEL + " " + bLocation + " " + bSendServer + " " + currentDateandTime + "\n";
                 fOut.write(sCadena.getBytes());
@@ -113,6 +145,21 @@ public class MainActivity extends AppCompatActivity {
             fOut.flush();
         } catch (Exception e) {
             Toast.makeText(this, "Error grabar.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void checkForPermissions() {
+        String[] PERMISSIONS_STORAGE = {
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {  // Only ask for these permissions on runtime when running Android 6.0 or higher
+            int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            if (permission != PackageManager.PERMISSION_GRANTED) {
+                // We don't have permission so prompt the user
+                ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 1);
+            }
         }
     }
 }
