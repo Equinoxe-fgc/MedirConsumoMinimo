@@ -1,6 +1,7 @@
 package com.equinoxe.medirconsumominimo;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
@@ -11,6 +12,7 @@ import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -26,9 +28,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
-    final static long lPrimeraComprobacion = 10*60*1000;
-    final static long lPeriodoComprobacion = 60*1000;
-    final static int iUmbralCarga = 5;
+    final static long lPeriodoComprobacion = 120*1000;
 
     Timer timerGrabarDatos;
     DecimalFormat df;
@@ -64,14 +64,12 @@ public class MainActivity extends AppCompatActivity {
 
         final TimerTask timerTaskComprobarBateria = new TimerTask() {
             public void run() {
-                int iCarga = getBatteryCharge();
-                if (iCarga < iUmbralCarga)
-                    grabarCarga(iCarga);
+                grabarMedidas();
             }
         };
 
         timerGrabarDatos = new Timer();
-        timerGrabarDatos.scheduleAtFixedRate(timerTaskComprobarBateria, lPrimeraComprobacion, lPeriodoComprobacion);
+        timerGrabarDatos.scheduleAtFixedRate(timerTaskComprobarBateria, lPeriodoComprobacion, lPeriodoComprobacion);
     }
 
     public void onStart (View v) {
@@ -131,21 +129,40 @@ public class MainActivity extends AppCompatActivity {
         bStarted = !bStarted;
     }
 
-    private int getBatteryCharge() {
+    public void grabarMedidas() {
         IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = registerReceiver(null, ifilter);
-        return batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+
+        BatteryManager mBatteryManager = (BatteryManager) this.getSystemService(Context.BATTERY_SERVICE);
+
+        try {
+            String sCadena = sdf.format(new Date()) + ":" +
+                    batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) + ":" +
+                    batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) + ":" +
+                    batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) + ":" +
+                    mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE) + ":" +
+                    mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+            fOut.write(sCadena.getBytes());
+
+        } catch (Exception e) {
+            Log.e("Fichero de resultados", e.getMessage(), e);
+        }
     }
 
-    private void grabarCarga(int iCarga) {
-        String currentDateandTime = sdf.format(new Date());
+    @Override
+    public void onDestroy() {
+        timerGrabarDatos.cancel();
+        grabarMedidas();
         try {
-            String sCadena = currentDateandTime + " - " + iCarga + "\n";
-            fOut.write(sCadena.getBytes());
-            fOut.flush();
+            //fLog.close();
+            fOut.close();
         } catch (Exception e) {
-            Toast.makeText(this, "Error grabar.", Toast.LENGTH_LONG).show();
+            Log.e("Error - ", "Error cerrando fichero");
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
         }
+
+        super.onDestroy();
     }
 
     private void checkForPermissions() {
