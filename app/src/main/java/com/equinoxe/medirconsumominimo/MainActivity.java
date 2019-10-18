@@ -138,10 +138,10 @@ public class MainActivity extends AppCompatActivity {
         try {
             String sCadena = sdf.format(new Date()) + ":" +
                     batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) + ":" +
-                    batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) + ":" +
-                    batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) + ":" +
-                    mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE) + ":" +
-                    mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+                    (float)batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)/1000.0 + ":" +
+                    (float)batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1)/10 + ":" +
+                    (float)mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)/1000 + ":" +
+                    (float)mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)/1000 + "\n";
             fOut.write(sCadena.getBytes());
 
         } catch (Exception e) {
